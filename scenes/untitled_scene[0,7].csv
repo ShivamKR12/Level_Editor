@@ -1,0 +1,10 @@
+class;parent;position;model;shader;texture;collider;collider_type;texture_scale;points
+TriplanarCube;'entity';Vec3(-0.59310793, 0.06400016, 0.50333315);'cube';'triplanar_shader';'white_cube';'box';'None';;
+PokeShape;'entity';Vec3(-0.9584937, -1.3182104, -8.804937);;'lit_with_shadows_shader';'brick';;'mesh';Vec2(1, 1);[Vec3(-7.5359363, -1.3411045e-7, -3.461317), Vec3(7.520216, -6.109476e-7, -3.4945344), Vec3(70.2587, 0.0000067427754, 143.84846), Vec3(-234.17012, 0.000019930303, 467.32568)]
+TriplanarCube;;Vec3(2.7837355, 0.06399996, -6.946412);'cube';'triplanar_shader';'white_cube';'box';'None';;
+Pyramid;;Vec3(-0.78700375, 0.064000144, -6.819333);;'unlit_shader';'brick';;'None';;
+WhiteCube;;Vec3(-3.4848496, 0.06400048, -8.043303);'cube';'lit_with_shadows_shader';'white_cube';'box';'None';;
+ClassSpawner;;Vec3(0.37455424, 0.06400009, -9.977186);'wireframe_cube';'unlit_shader';;;'None';;
+Pyramid;;Vec3(3.5672283, 0.06400057, -10.119344);;'unlit_shader';'brick';;'None';;
+PokeShape;;Vec3(-2.7293765, 0.06400059, -10.627272);;'unlit_shader';'grass';;'None';;
+Pyramid;;Vec3(1.8983259, 0.06400107, -10.550289);;'unlit_shader';'brick';;'None';;
