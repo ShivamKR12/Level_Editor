@@ -58,6 +58,13 @@ class LevelEditor(Entity):
             render_queue=1
         )
 
+        # --- Dynamic scaling attributes for point_renderer ---
+        self.point_renderer._init_w, self.point_renderer._init_h = window.size
+        h = self.point_renderer._init_h or 1
+        self.point_renderer._base_thickness = (40 / h) * 2  # 2px, adjust as needed
+        self.point_renderer.model.thickness = self.point_renderer._base_thickness
+        # ----------------------------------------------------
+
         # Cube outlines for selection highlighting
         self.cubes = [
             Entity(wireframe=True, color=color.azure, parent=self, enabled=True) for _ in range(128)
@@ -66,12 +73,37 @@ class LevelEditor(Entity):
         # UI menus
         self.origin_mode_menu = ButtonGroup(['last', 'center', 'individual'], min_selection=1,
                                             position=window.top_left + Vec2(.45, 0), parent=self.ui)
-        self.origin_mode_menu.scale *= .5
+        # After creating self.origin_mode_menu
+        self.origin_mode_menu._init_w, self.origin_mode_menu._init_h = window.size
+        h = self.origin_mode_menu._init_h or 1
+        self.origin_mode_menu._base_ui_scale = (10 / h) * 2
+        self.origin_mode_menu.scale = self.origin_mode_menu._base_ui_scale
+
+        def _origin_mode_menu_update():
+            cur_w, _ = window.size
+            ratio = cur_w / (self.origin_mode_menu._init_w or cur_w)
+            self.origin_mode_menu.scale = self.origin_mode_menu._base_ui_scale * ratio
+
+        self.origin_mode_menu.update = _origin_mode_menu_update
+        self.origin_mode_menu.scale = self.origin_mode_menu._base_ui_scale
         self.origin_mode_menu.on_value_changed = self.render_selection
 
         self.local_global_menu = ButtonGroup(['local', 'global'], default='global', min_selection=1,
                                              position=window.top_left + Vec2(.25, 0), parent=self.ui)
-        self.local_global_menu.scale *= .5
+        
+        # Dynamic scaling for local_global_menu
+        self.local_global_menu._init_w, self.local_global_menu._init_h = window.size
+        h = self.local_global_menu._init_h or 1
+        self.local_global_menu._base_ui_scale = (10 / h) * 2  # Use 10px or adjust as needed
+        self.local_global_menu.scale = self.local_global_menu._base_ui_scale
+
+        def _local_global_menu_update():
+            cur_w, _ = window.size
+            ratio = cur_w / (self.local_global_menu._init_w or cur_w)
+            self.local_global_menu.scale = self.local_global_menu._base_ui_scale * ratio
+
+        self.local_global_menu.update = _local_global_menu_update
+
         self.local_global_menu.on_value_changed = self.render_selection
 
         self.target_fov = 90
@@ -121,6 +153,18 @@ class LevelEditor(Entity):
         self.inspector = Inspector()
         self.point_of_view_selector = PointOfViewSelector()
         self.help = Help()
+        self.search = Search()  # <-- Add this line
+
+        # After creating self.help
+        self.help._init_w, self.help._init_h = window.size
+        h = self.help._init_h or 1
+        self.help._base_ui_scale = (8 / h) * 2  # 25px diameter, adjust as needed
+        self.help.scale = self.help._base_ui_scale
+
+        # For the tooltip
+        self.help.tooltip._init_w, self.help.tooltip._init_h = window.size
+        self.help.tooltip._base_ui_scale = (12 / h) * 2  # 50px text height, adjust as needed
+        self.help.tooltip.scale = self.help.tooltip._base_ui_scale
 
         self._edit_mode = True
 
@@ -205,6 +249,31 @@ class LevelEditor(Entity):
 
         if mouse.left:
             self.render_selection()
+
+        cur_w, _ = window.size
+        ratio = cur_w / (self.point_renderer._init_w or cur_w)
+        self.point_renderer.model.thickness = max(0.01, self.point_renderer._base_thickness * ratio)
+
+        # Dynamic scaling for help button
+        ratio = cur_w / (self.help._init_w or cur_w)
+        self.help.scale = max(0.05, self.help._base_ui_scale * ratio)
+        
+        # Dynamic scaling for tooltip
+        ratio_tooltip = cur_w / (self.help.tooltip._init_w or cur_w)
+        self.help.tooltip.scale = max(0.7, self.help.tooltip._base_ui_scale * ratio_tooltip)
+
+        # Dynamic scaling for right-click menu
+        ratio = cur_w / (self.right_click_menu.radial_menu._init_w or cur_w)
+        self.right_click_menu.radial_menu.scale = self.right_click_menu.radial_menu._base_ui_scale * ratio
+        
+        # Optionally, scale each button
+        for button in self.right_click_menu.radial_menu.buttons:
+            ratio_btn = cur_w / (button._init_w or cur_w)
+            button.scale = button._base_ui_scale * ratio_btn
+        
+        # Dynamic scaling for serach input field
+        ratio = cur_w / (self.search.input_field._init_w or cur_w)
+        self.search.input_field.scale = self.search.input_field._base_ui_scale * ratio
 
 
     def input(self, key):
@@ -1988,6 +2057,14 @@ class SelectionBox(Entity):
         """
         super().__init__(parent=LEVEL_EDITOR.ui, visible=False, **kwargs)  # Attach to UI layer # type: ignore
 
+        # --- Dynamic scaling attributes ---
+        self._init_w, self._init_h = window.size
+        h = self._init_h or 1
+        # Set your desired pixel thickness for the selection box border, e.g. 2px:
+        self._base_thickness = (2 / h) * 2
+        self.model.thickness = self._base_thickness
+        # ----------------------------------
+
     def input(self, key):
         """
         Handles input for starting and ending the box selection.
@@ -2068,6 +2145,12 @@ class SelectionBox(Entity):
                 # Update the selection box dimensions based on current mouse position
                 self.scale_x = mouse.x - self.x
                 self.scale_y = mouse.y - self.y
+
+            # --- Dynamic scaling for border thickness ---
+            cur_w, _ = window.size
+            ratio = cur_w / (self._init_w or cur_w)
+            self.model.thickness = self._base_thickness * ratio
+            # --------------------------------------------
 
         except Exception as e:
             print(f"[SelectionBox.update] Error during update: {e}")
@@ -2363,6 +2446,11 @@ class Spawner(Entity):
         super().__init__(parent=LEVEL_EDITOR)  # type: ignore
         self.target = None
         self.ui = Entity(parent=LEVEL_EDITOR.ui, position=window.bottom)  # type: ignore
+
+        # --- Add this block ---
+        self.ui._init_w, self.ui._init_h = window.size
+        # ----------------------
+
         self.update_menu()
 
     def update_menu(self):
@@ -2385,6 +2473,14 @@ class Spawner(Entity):
                 text_size=.5,
                 on_click=Func(self.spawn_entity, prefab)
             )
+
+            # ...inside the for loop that creates each prefab button...
+            button._init_w, button._init_h = window.size
+            h = button._init_h or 1
+            # Set your desired pixel size for the button, e.g. 40px:
+            button._base_ui_scale = (30 / h) * 2
+            button.scale = button._base_ui_scale
+
             if hasattr(prefab, 'icon'):
                 button.icon = prefab.icon
             else:
@@ -2476,6 +2572,16 @@ class Spawner(Entity):
         if mouse.world_point and self.target:
             if held_keys['n'] or mouse.left:
                 self.target.position = mouse.world_point
+
+        # --- Add this block to define ratio ---
+        cur_w, _ = window.size
+        ratio = cur_w / (self.ui._init_w or cur_w)
+        # ---------------------------------------
+
+        # Dynamically scale all prefab buttons
+        for button in self.ui.children:
+            if hasattr(button, '_base_ui_scale'):
+                button.scale = button._base_ui_scale * ratio
 
 
 class Deleter(Entity):
@@ -2761,6 +2867,13 @@ class LevelMenu(Entity):
             origin=(.5, 0), x=camera.aspect_ratio * .495, y=-.3, collider='box'  # type: ignore
         )
 
+        # After creating self.menu in LevelMenu.__init__
+        self.menu._init_w, self.menu._init_h = window.size
+        h = self.menu._init_h or 1
+        # Let's say you want the menu to be 300px wide and 150px tall:
+        self.menu._base_ui_scale = Vec2((90 / h) * 2, (90 / h) * 2)
+        self.menu.scale = self.menu._base_ui_scale
+
         # Grid for scene selection
         self.menu.grid = Entity(parent=self.menu, model=Grid(8, 8), z=-1, origin=self.menu.origin, color=color.dark_gray)
 
@@ -2821,6 +2934,12 @@ class LevelMenu(Entity):
         """
         Updates the cursor's position based on the mouse's position within the menu.
         """
+
+        # --- Dynamic scaling for menu ---
+        cur_w, _ = window.size
+        ratio = cur_w / (self.menu._init_w or cur_w)
+        self.menu.scale = self.menu._base_ui_scale * ratio
+
         self.cursor.enabled = self.menu.hovered  # Show cursor only when hovering over the menu
         if self.menu.hovered:
             grid_pos = [floor((mouse.point.x + 1) * 8), floor((mouse.point.y + .5) * 8)]
@@ -2921,6 +3040,26 @@ class HierarchyList(Entity):
         self.selected_renderer.z = -0.1
         self.prev_y = None
         self.i = 0
+
+        # --- Dynamic scaling attributes ---
+        self._init_w, self._init_h = window.size
+        h = self._init_h or 1
+        # Set your desired pixel size for the hierarchy panel, e.g. 220x500:
+        self._base_ui_scale = Vec2((220 / h) * 2, (500 / h) * 2)
+        self.scale = self._base_ui_scale
+        # ----------------------------------
+
+    def update(self):
+        # --- Dynamic scaling for hierarchy list ---
+        cur_w, _ = window.size
+        ratio = cur_w / (self._init_w or cur_w)
+        self.scale = self._base_ui_scale * ratio
+        # ------------------------------------------
+        # Scale the background and text to match the panel's scaling
+        self.bg.scale = Vec2(0.15, 10) * ratio  # Adjust 0.15, 10 as needed for your design
+        self.entity_list_text.scale = 0.7 * ratio  # Adjust 0.6 as needed for your design
+        # Dynamically scale the selected_renderer highlight
+        self.selected_renderer.scale = Vec2(0.15, Text.size) * ratio  # Adjust 0.25, Text.size as needed
 
     def input(self, key):
         """
@@ -3238,6 +3377,15 @@ class Inspector(Entity):
         # Call base class constructor, attaching this inspector to the level editor's hierarchy UI.
         try:
             super().__init__(parent=LEVEL_EDITOR.hierarchy_list, x=.15)  # type: ignore
+
+            # --- Dynamic scaling attributes ---
+            self._init_w, self._init_h = window.size
+            h = self._init_h or 1
+            # Set your desired pixel size for the inspector panel, e.g. 300x500:
+            self._base_ui_scale = Vec2((300 / h) * 2, (500 / h) * 2)
+            self.scale = self._base_ui_scale
+            # ----------------------------------
+
         except Exception as e:
             # If the parent doesn't exist or LEVEL_EDITOR is not set up, fail silently.
             # We do not alter logic; we simply ensure the inspector can still be constructed without crashing.
@@ -3607,6 +3755,24 @@ class Inspector(Entity):
                     b.on_click = Func(setattr, LEVEL_EDITOR.menu_handler, 'state', 'class_menu')  # type: ignore
 
                 i += 1
+
+        def update(self):
+            cur_w, _ = window.size
+            ratio = cur_w / (self._init_w or cur_w)
+            self.scale = self._base_ui_scale * ratio
+        
+            # Optionally scale the name field and its children
+            self.name_field.scale = Vec2(.5, .04) * ratio  # adjust as needed
+            for field in self.transform_fields:
+                field.scale = Vec2(.2, .04) * ratio  # adjust as needed
+        
+            # Optionally scale property fields (model, texture, color, etc.)
+            for field in self.fields.values():
+                field.scale = Vec2(.5, .04) * ratio  # adjust as needed
+        
+            # Optionally scale shader input fields
+            for child in self.shader_inputs_parent.children:
+                child.scale = Vec2(.5, .04) * ratio  # adjust as needed
 
 
 class MenuHandler(Entity):
@@ -5173,6 +5339,19 @@ class RightClickMenu(Entity):
                 enabled=False,  # Start hidden; enabled on right-click
                 scale=.05
             )
+
+            # After creating self.radial_menu
+            self.radial_menu._init_w, self.radial_menu._init_h = window.size
+            h = self.radial_menu._init_h or 1
+            self.radial_menu._base_ui_scale = (20 / h) * 2  # 80px diameter, adjust as needed
+            self.radial_menu.scale = self.radial_menu._base_ui_scale
+            
+            # Optionally, scale each button if you want them to scale individually:
+            for button in self.radial_menu.buttons:
+                button._init_w, button._init_h = window.size
+                button._base_ui_scale = (240 / h) * 2  # 24px diameter, adjust as needed
+                button.scale = button._base_ui_scale
+
         except Exception as e:
             print(f"[RightClickMenu] Error creating RadialMenu: {e}")
             self.radial_menu = None
@@ -5260,6 +5439,13 @@ class Search(Entity):
         try:
             # Create the input field, but keep it disabled until space is pressed
             self.input_field = InputField(parent=LEVEL_EDITOR.ui, enabled=False)  # type: ignore
+
+            # After creating self.input_field
+            self.input_field._init_w, self.input_field._init_h = window.size
+            h = self.input_field._init_h or 1
+            self.input_field._base_ui_scale = (20 / h) * 2  # 20px height, adjust as needed
+            self.input_field.scale = self.input_field._base_ui_scale
+
         except Exception as e:
             print(f"[Search] Error creating InputField: {e}")
             self.input_field = None
