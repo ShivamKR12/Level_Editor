@@ -1,5 +1,6 @@
 from ursina import *
-from tkinter import simpledialog
+from ursina.mesh_importer import *
+from tkinter import simpledialog, messagebox
 import importlib
 import sys
 
@@ -16,15 +17,58 @@ objects       = []
 delete_button = None
 snap_button   = None
 
+def toggle_vis(self:Entity):
+    global selecting, deleting
+
+    # Find this entity’s DebugBehaviour (if it exists)
+    dbg = None
+    for script in self.scripts:
+        if isinstance(script, DebugBehaviour):
+            dbg = script
+            break
+    
+    if deleting:
+        if self in objects:
+            objects.remove(self)
+        destroy(self)
+        refresh_container()
+        # If this was the selected entity, clear that reference:
+        if dbg is not None and selecting == dbg:
+            selecting = None
+        return  # ← ADD this RETURN so we do not run the “wireframe/selection” code afterward
+    
+    self.wireframe=not self.wireframe
+
+    # Also set/unset selecting to that DebugBehaviour instance (if present)
+    if dbg:
+        if selecting == dbg:
+            selecting = None
+            # restore color if needed
+            if dbg._orig_color is not None:
+                dbg.entity.color = dbg._orig_color
+        else:
+            # Deselect previous (if any)
+            if selecting is not None and selecting._orig_color is not None:
+                selecting.entity.color = selecting._orig_color
+            selecting = dbg
+            # Highlight newly selected (store original color if not already stored)
+            if dbg._orig_color is None:
+                dbg._orig_color = dbg.entity.color
+            dbg.entity.color = color.azure
+
+Entity.toggle_vis=toggle_vis
+
 # ─── DebugBehaviour (with Highlight + Snap-on-Release) ─────
 class DebugBehaviour():
     def __init__(self) -> None:
         self.entity: Entity
         self._orig_color = None
+        # Assign once, not every frame:
+        self.entity.on_click = self.toggle
 
     def update(self):
         # Ensure clicking calls toggle()
-        self.entity.on_click = self.toggle
+        # self.entity.on_click = self.toggle
 
         # Only allow transformations if this instance is selected
         if selecting != self:
@@ -121,6 +165,7 @@ class DebugBehaviour():
             if self.entity in objects:
                 objects.remove(self.entity)
             destroy(self.entity)
+            refresh_container()   # ← insert this line
             del self
             return
 
@@ -157,20 +202,34 @@ def addnew():
     name     = simpledialog.askstring("Add new Object", "Enter Object's name")
     model    = simpledialog.askstring("Add new Object", "Enter Object's Model name")
     texture  = simpledialog.askstring("Add new Object", "Enter Object's Texture name")
+    clr=None
+    try:
+        if isinstance(eval(texture), color.Color): clr=eval(texture)
+    except: pass
     collider = simpledialog.askstring("Add new Object", "Enter Object's Collider type")
+    double_sided=messagebox.askyesno("Map Editor", "Double Sided?")
     try:
         e = Entity(
             name     = name if name not in (None, "") else None,
             model    = model if model not in (None, "") else "cube",
             texture  = texture if texture not in (None, "") else "grass",
-            collider = collider if collider not in (None, "") else None
+            collider = collider if collider not in (None, "") else None,
+            double_sided = double_sided
         )
+        if clr: e.color=clr
         e.add_script(DebugBehaviour())
-        if e.model is None:
-            e.model = 'cube'
+        if e.model is None: e.model = 'cube'
         objects.append(e)
+
+        # Recompute page so the new object is visible:
+        global current_page
+        last_page    = max(0, ceil(len(objects) / OBJECTS_PER_PAGE) - 1)
+        current_page = last_page
+
     except:
         pass
+
+    refresh_container()
 
 # ─── “Toggle Delete Mode” ──────────────────────────────────
 def toggleDelete():
@@ -200,6 +259,67 @@ def toggleSnap():
         snap_button.color = color.white
         snap_button.text_color = color.black
 
+OBJECTS_PER_PAGE=5
+current_page=0
+container_o=[]
+
+def pg(i):
+    global current_page
+
+    # Recompute max_page whenever objects changes:
+    max_page = max(0, ceil(len(objects) / OBJECTS_PER_PAGE) - 1)
+
+    # Try moving to page “current_page + i,” but clamp into [0..max_page]
+    proposed = current_page + i
+    current_page = max(0, min(proposed, max_page))
+
+    refresh_container()
+
+container=Entity(model=Quad(.1, aspect=.7), 
+                 color=color.black33, 
+                 parent=camera.ui, 
+                 scale=(.7,1), x=0.6479293, 
+                 eternal=True)
+Button('Previous', 
+       position=Vec3(0.4540579, -0.36839267, -1.3447969), 
+       color=color.white, 
+       on_click=lambda:pg(-1), 
+       scale=(.25,.1), 
+       text_color=color.black, 
+       eternal=True)
+Button('Next', 
+       position=Vec3(0.736449, -0.36839267, -1.3447969), 
+       color=color.white, 
+       on_click=lambda:pg(1), 
+       scale=(.25,.1), 
+       text_color=color.black, 
+       eternal=True)
+
+def refresh_container():
+    for btn in container_o:
+        destroy(btn)
+    container_o.clear()
+
+    start = current_page * OBJECTS_PER_PAGE
+    end   = min((current_page+1)*OBJECTS_PER_PAGE, len(objects))
+
+    # We want up to 5 buttons, each spaced by –0.28 in Y, starting at Y=0.4
+    for page_index in range(start, end):
+        obj         = objects[page_index]
+        local_row   = page_index - start       # 0..4
+        y_pos       = 0.4 + local_row * (-0.28)
+
+        btn = Button(
+            obj.name or f"Entity {page_index}",
+            position   = Vec3(0.65, y_pos, 0),
+            scale      = (.5, .1),
+            color      = color.white,
+            text_color = color.black,
+            on_click   = obj.toggle_vis,
+            eternal    = True
+        )
+        container_o.append(btn)
+
 # ─── “Save” (restores color before writing) ────────────────
 def save():
     global selecting
@@ -210,28 +330,35 @@ def save():
         selecting = None
 
     # Serialize each entity in 'objects' using repr()
-    code = "from ursina import *\n\n"
-    for i in objects:
-        code += repr(i) + "\n"
-    with open('scene.py', 'w') as file:
-        file.write(code)
+    if messagebox.askyesno("Map Editor", "Do you want to save?"):
+        code=f"from ursina import *\n\n"
+        for i in objects:
+            code+=repr(i)+'\n'
+        with open('scene.py', 'w') as file:
+            file.write(code)
 
 # ─── “Load” (clears scene and reloads scene.py) ─────────────
 def load():
-    scene.clear()
-    camera.overlay.color = color.clear
-    if 'scene' in sys.modules:
-        importlib.reload(sys.modules['scene'])
-    else:
-        importlib.import_module('scene')
+    if messagebox.askyesno("Map Editor", "Do you want to load?"):
+        scene.clear()
+        camera.overlay.color = color.clear
+        if 'scene' in sys.modules:
+            importlib.reload(sys.modules['scene'])
+        else:
+            importlib.import_module('scene')
 
-    for e in scene.entities:
-        if not e.eternal:
-            objects.append(e)
-            e.add_script(DebugBehaviour())
+        objects.clear()
+        for i in scene.entities:
+            i:Entity
+            if not i.eternal:
+                objects.append(i)
+                i.add_script(DebugBehaviour())
+        # Always go back to page 0
+        global current_page
+        current_page = 0
+        refresh_container()
 
 # ─── UI SETUP ──────────────────────────────────────────────
-
 # Background panel for buttons
 Entity(
     model      = Quad(.1, aspect = .7),
@@ -318,6 +445,7 @@ Entity(
 Sky(eternal=True)
 EditorCamera(eternal=True)
 
+refresh_container()
 app.run()
 
 
