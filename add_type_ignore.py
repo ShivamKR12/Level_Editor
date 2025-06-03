@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Script to append "# type: ignore" to lines in level_editor.py that reference LEVEL_EDITOR.
+Script to append "# type: ignore" to lines in improved_level_editor.py that reference LEVEL_EDITOR.
 
 Usage:
-    python add_type_ignore.py /path/to/level_editor.py
+    python add_type_ignore.py /path/to/improved_level_editor.py
 
 This will modify the file in place, adding "# type: ignore" at the end of any line containing "LEVEL_EDITOR"
 that does not already end with a "type: ignore" comment. A backup of the original file will be saved with
@@ -68,7 +68,7 @@ def add_type_ignore_to_level_editor(file_path: Path):
 
 def main():
     if len(sys.argv) != 2:
-        print("Usage: python add_type_ignore.py /path/to/level_editor.py")
+        print("Usage: python add_type_ignore.py /path/to/improved_level_editor.py")
         sys.exit(1)
 
     file_path = Path(sys.argv[1])

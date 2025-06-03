@@ -58,13 +58,6 @@ class LevelEditor(Entity):
             render_queue=1
         )
 
-        # --- Dynamic scaling attributes for point_renderer ---
-        self.point_renderer._init_w, self.point_renderer._init_h = window.size
-        h = self.point_renderer._init_h or 1
-        self.point_renderer._base_thickness = (40 / h) * 2  # 2px, adjust as needed
-        self.point_renderer.model.thickness = self.point_renderer._base_thickness
-        # ----------------------------------------------------
-
         # Cube outlines for selection highlighting
         self.cubes = [
             Entity(wireframe=True, color=color.azure, parent=self, enabled=True) for _ in range(128)
@@ -73,37 +66,12 @@ class LevelEditor(Entity):
         # UI menus
         self.origin_mode_menu = ButtonGroup(['last', 'center', 'individual'], min_selection=1,
                                             position=window.top_left + Vec2(.45, 0), parent=self.ui)
-        # After creating self.origin_mode_menu
-        self.origin_mode_menu._init_w, self.origin_mode_menu._init_h = window.size
-        h = self.origin_mode_menu._init_h or 1
-        self.origin_mode_menu._base_ui_scale = (10 / h) * 2
-        self.origin_mode_menu.scale = self.origin_mode_menu._base_ui_scale
-
-        def _origin_mode_menu_update():
-            cur_w, _ = window.size
-            ratio = cur_w / (self.origin_mode_menu._init_w or cur_w)
-            self.origin_mode_menu.scale = self.origin_mode_menu._base_ui_scale * ratio
-
-        self.origin_mode_menu.update = _origin_mode_menu_update
-        self.origin_mode_menu.scale = self.origin_mode_menu._base_ui_scale
+        self.origin_mode_menu.scale *= .5
         self.origin_mode_menu.on_value_changed = self.render_selection
 
         self.local_global_menu = ButtonGroup(['local', 'global'], default='global', min_selection=1,
                                              position=window.top_left + Vec2(.25, 0), parent=self.ui)
-        
-        # Dynamic scaling for local_global_menu
-        self.local_global_menu._init_w, self.local_global_menu._init_h = window.size
-        h = self.local_global_menu._init_h or 1
-        self.local_global_menu._base_ui_scale = (10 / h) * 2  # Use 10px or adjust as needed
-        self.local_global_menu.scale = self.local_global_menu._base_ui_scale
-
-        def _local_global_menu_update():
-            cur_w, _ = window.size
-            ratio = cur_w / (self.local_global_menu._init_w or cur_w)
-            self.local_global_menu.scale = self.local_global_menu._base_ui_scale * ratio
-
-        self.local_global_menu.update = _local_global_menu_update
-
+        self.local_global_menu.scale *= .5
         self.local_global_menu.on_value_changed = self.render_selection
 
         self.target_fov = 90
@@ -153,18 +121,6 @@ class LevelEditor(Entity):
         self.inspector = Inspector()
         self.point_of_view_selector = PointOfViewSelector()
         self.help = Help()
-        self.search = Search()  # <-- Add this line
-
-        # After creating self.help
-        self.help._init_w, self.help._init_h = window.size
-        h = self.help._init_h or 1
-        self.help._base_ui_scale = (8 / h) * 2  # 25px diameter, adjust as needed
-        self.help.scale = self.help._base_ui_scale
-
-        # For the tooltip
-        self.help.tooltip._init_w, self.help.tooltip._init_h = window.size
-        self.help.tooltip._base_ui_scale = (12 / h) * 2  # 50px text height, adjust as needed
-        self.help.tooltip.scale = self.help.tooltip._base_ui_scale
 
         self._edit_mode = True
 
@@ -227,7 +183,7 @@ class LevelEditor(Entity):
         camera.fov = self.target_fov
         if hasattr(self, 'ui'):
             self.ui.enabled = True
-            
+
 
     def on_disable(self):
         """
@@ -249,31 +205,6 @@ class LevelEditor(Entity):
 
         if mouse.left:
             self.render_selection()
-
-        cur_w, _ = window.size
-        ratio = cur_w / (self.point_renderer._init_w or cur_w)
-        self.point_renderer.model.thickness = max(0.01, self.point_renderer._base_thickness * ratio)
-
-        # Dynamic scaling for help button
-        ratio = cur_w / (self.help._init_w or cur_w)
-        self.help.scale = max(0.05, self.help._base_ui_scale * ratio)
-        
-        # Dynamic scaling for tooltip
-        ratio_tooltip = cur_w / (self.help.tooltip._init_w or cur_w)
-        self.help.tooltip.scale = max(0.7, self.help.tooltip._base_ui_scale * ratio_tooltip)
-
-        # Dynamic scaling for right-click menu
-        ratio = cur_w / (self.right_click_menu.radial_menu._init_w or cur_w)
-        self.right_click_menu.radial_menu.scale = self.right_click_menu.radial_menu._base_ui_scale * ratio
-        
-        # Optionally, scale each button
-        for button in self.right_click_menu.radial_menu.buttons:
-            ratio_btn = cur_w / (button._init_w or cur_w)
-            button.scale = button._base_ui_scale * ratio_btn
-        
-        # Dynamic scaling for serach input field
-        ratio = cur_w / (self.search.input_field._init_w or cur_w)
-        self.search.input_field.scale = self.search.input_field._base_ui_scale * ratio
 
 
     def input(self, key):
@@ -806,7 +737,7 @@ class GizmoArrow(Draggable):
     def __init__(self, model='arrow', collider='box', **kwargs):
         """
         Initialize the GizmoArrow with default arrow model and unlit shader.
-        
+
         Args:
             model (str): Model used for the gizmo. Defaults to 'arrow'.
             collider (str): Collider shape. Defaults to 'box'.
@@ -970,6 +901,10 @@ class Gizmo(Entity):
         for arrow in self.arrow_parent.children:
             arrow.highlight_color = color.white
             arrow.original_scale = arrow.scale
+        self.subgizmos['xz'].original_scale = self.subgizmos['xz'].scale
+        self.subgizmos['x'].original_scale = self.subgizmos['x'].scale
+        self.subgizmos['y'].original_scale = self.subgizmos['y'].scale
+        self.subgizmos['z'].original_scale = self.subgizmos['z'].scale
 
         # Fake gizmo: used for local transform locking without visual clutter
         self.fake_gizmo = Entity(parent=LEVEL_EDITOR, enabled=False)  # type: ignore
@@ -1044,6 +979,14 @@ class Gizmo(Entity):
         Update the gizmo's state each frame.
         Handles gizmo scaling relative to camera, and position syncing when dragging.
         """
+
+        # TODO Temporary fix to Gizmo size issue
+        self.subgizmos['xz'].scale = self.subgizmos['xz'].original_scale # 1
+        self.subgizmos['xz'].scale_y = 0.05
+        self.subgizmos['x'].scale = self.subgizmos['x'].original_scale # 1
+        self.subgizmos['y'].scale = self.subgizmos['y'].original_scale # 1
+        self.subgizmos['z'].scale = self.subgizmos['z'].original_scale # 1
+
         if held_keys['r'] or held_keys['s']:
             return  # skip updating during rotation/scale modes
 
@@ -1459,7 +1402,7 @@ class QuickGrabber(Entity):
 
         # A large invisible plane for mouse dragging
         self.plane = Entity(
-            model='quad', collider='box', scale=Vec3(999, 999, 1), 
+            model='quad', collider='box', scale=Vec3(999, 999, 1),
             visible_self=False, enabled=False
         )
 
@@ -1541,10 +1484,10 @@ class QuickGrabber(Entity):
 
         # Cancel drag if mouse barely moved after clicking (likely a selection, not a drag)
         if (
-            combined_key == 'left mouse up'
-            and self.target_entity
-            and distance(self.target_entity._original_world_position, self.target_entity.world_position) < 0.1
-            and (time.time() - mouse.prev_click_time) < 0.5
+                combined_key == 'left mouse up'
+                and self.target_entity
+                and distance(self.target_entity._original_world_position, self.target_entity.world_position) < 0.1
+                and (time.time() - mouse.prev_click_time) < 0.5
         ):
             self.is_dragging = False
             mouse.traverse_target = scene
@@ -1581,8 +1524,8 @@ class QuickGrabber(Entity):
                 for e in LEVEL_EDITOR.selection:  # type: ignore
                     changes.append([
                         LEVEL_EDITOR.entities.index(e),   # type: ignore
-                        'world_position', 
-                        e._original_world_position, 
+                        'world_position',
+                        e._original_world_position,
                         e.world_position
                     ])  # type: ignore
 
@@ -1644,7 +1587,7 @@ class QuickGrabber(Entity):
 
 class QuickScaler(Entity):
     """
-    QuickScaler is a utility for scaling selected entities in the LEVEL_EDITOR 
+    QuickScaler is a utility for scaling selected entities in the LEVEL_EDITOR
     using shortcut keys (`s`, `sx`, `sy`, `sz`) for uniform or axis-constrained scaling.
 
     Attributes:
@@ -1653,7 +1596,7 @@ class QuickScaler(Entity):
         dragging (bool): Unused flag, placeholder for potential dragging state.
         original_gizmo_state (str): Stores the original gizmo animator state to restore post-scaling.
     """
-    
+
     def __init__(self, **kwargs):
         super().__init__(
             parent=LEVEL_EDITOR,  # type: ignore
@@ -1681,9 +1624,9 @@ class QuickScaler(Entity):
         try:
             # Early exit if user is performing a conflicting action
             if (
-                held_keys['control'] or held_keys['shift'] or held_keys['alt']
-                or mouse.left or mouse.middle or held_keys['r']
-                or held_keys['d'] or held_keys['t']
+                    held_keys['control'] or held_keys['shift'] or held_keys['alt']
+                    or mouse.left or mouse.middle or held_keys['r']
+                    or held_keys['d'] or held_keys['t']
             ):
                 return
 
@@ -1838,7 +1781,7 @@ class RotateRelativeToView(Entity):
                                    to apply relative rotation.
         sensitivity (Vec2): Controls how sensitive the rotation is to mouse movement.
     """
-    
+
     _rotation_helper = Entity(name='RotateRelativeToView_rotation_helper', add_to_scene_entities=False)
     sensitivity = Vec2(200, 200)
 
@@ -2057,14 +2000,6 @@ class SelectionBox(Entity):
         """
         super().__init__(parent=LEVEL_EDITOR.ui, visible=False, **kwargs)  # Attach to UI layer # type: ignore
 
-        # --- Dynamic scaling attributes ---
-        self._init_w, self._init_h = window.size
-        h = self._init_h or 1
-        # Set your desired pixel thickness for the selection box border, e.g. 2px:
-        self._base_thickness = (2 / h) * 2
-        self.model.thickness = self._base_thickness
-        # ----------------------------------
-
     def input(self, key):
         """
         Handles input for starting and ending the box selection.
@@ -2117,7 +2052,7 @@ class SelectionBox(Entity):
                     pos = e.screen_position
                     # Check if the entity is within box bounds
                     if (self.x < pos.x < self.x + abs(self.scale_x) and
-                        self.y < pos.y < self.y + abs(self.scale_y)):
+                            self.y < pos.y < self.y + abs(self.scale_y)):
 
                         if self.mode in ('add', 'new') and e not in LEVEL_EDITOR.selection:  # type: ignore
                             LEVEL_EDITOR.selection.append(e)  # type: ignore
@@ -2145,12 +2080,6 @@ class SelectionBox(Entity):
                 # Update the selection box dimensions based on current mouse position
                 self.scale_x = mouse.x - self.x
                 self.scale_y = mouse.y - self.y
-
-            # --- Dynamic scaling for border thickness ---
-            cur_w, _ = window.size
-            ratio = cur_w / (self._init_w or cur_w)
-            self.model.thickness = self._base_thickness * ratio
-            # --------------------------------------------
 
         except Exception as e:
             print(f"[SelectionBox.update] Error during update: {e}")
@@ -2446,11 +2375,6 @@ class Spawner(Entity):
         super().__init__(parent=LEVEL_EDITOR)  # type: ignore
         self.target = None
         self.ui = Entity(parent=LEVEL_EDITOR.ui, position=window.bottom)  # type: ignore
-
-        # --- Add this block ---
-        self.ui._init_w, self.ui._init_h = window.size
-        # ----------------------
-
         self.update_menu()
 
     def update_menu(self):
@@ -2473,14 +2397,6 @@ class Spawner(Entity):
                 text_size=.5,
                 on_click=Func(self.spawn_entity, prefab)
             )
-
-            # ...inside the for loop that creates each prefab button...
-            button._init_w, button._init_h = window.size
-            h = button._init_h or 1
-            # Set your desired pixel size for the button, e.g. 40px:
-            button._base_ui_scale = (30 / h) * 2
-            button.scale = button._base_ui_scale
-
             if hasattr(prefab, 'icon'):
                 button.icon = prefab.icon
             else:
@@ -2573,16 +2489,6 @@ class Spawner(Entity):
             if held_keys['n'] or mouse.left:
                 self.target.position = mouse.world_point
 
-        # --- Add this block to define ratio ---
-        cur_w, _ = window.size
-        ratio = cur_w / (self.ui._init_w or cur_w)
-        # ---------------------------------------
-
-        # Dynamically scale all prefab buttons
-        for button in self.ui.children:
-            if hasattr(button, '_base_ui_scale'):
-                button.scale = button._base_ui_scale * ratio
-
 
 class Deleter(Entity):
     """
@@ -2605,7 +2511,7 @@ class Deleter(Entity):
             key (str): The key that was pressed.
         """
         combined_key = input_handler.get_combined_key(key)  # Get combined key (e.g., 'control+x')
-        
+
         # If there is a selection and the key matches a delete shortcut, delete the selected entities
         if LEVEL_EDITOR.selection and combined_key in self.shortcuts:  # type: ignore
             self.delete_selected()
@@ -2641,7 +2547,7 @@ class Deleter(Entity):
 
             # Optionally, log how many entities were deleted for debugging
             print(f"Deleted {before - len(LEVEL_EDITOR.entities)} entities.")  # type: ignore
-        
+
         except Exception as e:
             # In case of any error during deletion, log it for debugging purposes
             print(f"[Deleter.delete_selected] Error during deletion: {e}")
@@ -2675,14 +2581,14 @@ class Grouper(Entity):
 
                 # Get the parents of the selected entities
                 parents = tuple(set([e.parent for e in LEVEL_EDITOR.selection]))  # type: ignore
-                
+
                 # If all selected entities have the same parent, set the group's parent to that parent
                 if len(parents) == 1:
                     group_entity.world_parent = parents[0]
 
                 # Calculate the average position of the selected entities to place the group at that position
                 group_entity.world_position = sum([e.world_position for e in LEVEL_EDITOR.selection]) / len(LEVEL_EDITOR.selection)  # type: ignore
-                
+
                 # Set the group entity as the parent for all selected entities
                 for e in LEVEL_EDITOR.selection:  # type: ignore
                     e.world_parent = group_entity
@@ -2801,18 +2707,18 @@ class Copier(Entity):
                     code = __class__.prefix
                     for e in LEVEL_EDITOR.selection:  # Loop through selected entities  # type: ignore
                         entity_repr = repr(e)
-                        
+
                         # Ensure 'collider_type' is included for entities that have it
                         if not 'collider_type=' in entity_repr and hasattr(e, 'collider_type'):
                             entity_repr = f'{entity_repr[:-1]}collider_type=\'{e.collider_type}\')'
-                        
+
                         code += entity_repr + '\n'
 
                     pyperclip.copy(f'{code}\n```')  # Copy the serialized code to the clipboard
 
             if held_keys['control'] and key == 'v':
                 value = pyperclip.paste()  # Paste the copied content from clipboard
-                
+
                 # If the content is in the expected copied format, process it
                 if value.startswith('ursina_editor_copy_data:```py\n') and value.endswith('\n```'):
                     cleaned_code = value[len(__class__.prefix):-4].strip().split('\n')
@@ -2844,7 +2750,7 @@ class Copier(Entity):
 
 class LevelMenu(Entity):
     """
-    A class that handles the level menu interface for the level editor. 
+    A class that handles the level menu interface for the level editor.
     It allows the user to navigate between scenes, load new scenes, and interact with the scene grid.
 
     Attributes:
@@ -2866,13 +2772,6 @@ class LevelMenu(Entity):
             parent=LEVEL_EDITOR.ui, model=Quad(radius=.05), color=color.black, scale=.2,  # type: ignore
             origin=(.5, 0), x=camera.aspect_ratio * .495, y=-.3, collider='box'  # type: ignore
         )
-
-        # After creating self.menu in LevelMenu.__init__
-        self.menu._init_w, self.menu._init_h = window.size
-        h = self.menu._init_h or 1
-        # Let's say you want the menu to be 300px wide and 150px tall:
-        self.menu._base_ui_scale = Vec2((90 / h) * 2, (90 / h) * 2)
-        self.menu.scale = self.menu._base_ui_scale
 
         # Grid for scene selection
         self.menu.grid = Entity(parent=self.menu, model=Grid(8, 8), z=-1, origin=self.menu.origin, color=color.dark_gray)
@@ -2934,12 +2833,6 @@ class LevelMenu(Entity):
         """
         Updates the cursor's position based on the mouse's position within the menu.
         """
-
-        # --- Dynamic scaling for menu ---
-        cur_w, _ = window.size
-        ratio = cur_w / (self.menu._init_w or cur_w)
-        self.menu.scale = self.menu._base_ui_scale * ratio
-
         self.cursor.enabled = self.menu.hovered  # Show cursor only when hovering over the menu
         if self.menu.hovered:
             grid_pos = [floor((mouse.point.x + 1) * 8), floor((mouse.point.y + .5) * 8)]
@@ -3025,10 +2918,10 @@ class HierarchyList(Entity):
         prev_y (int): The previously selected index in the list, used for multi-selection.
         i (int): The current index in the entity list.
     """
-    
+
     def __init__(self):
         """
-        Initializes the HierarchyList object, setting up necessary components 
+        Initializes the HierarchyList object, setting up necessary components
         like background, text, and selection renderer.
         """
         super().__init__(parent=LEVEL_EDITOR.ui, position=window.top_left + Vec2(0, -0.05))  # type: ignore
@@ -3041,30 +2934,10 @@ class HierarchyList(Entity):
         self.prev_y = None
         self.i = 0
 
-        # --- Dynamic scaling attributes ---
-        self._init_w, self._init_h = window.size
-        h = self._init_h or 1
-        # Set your desired pixel size for the hierarchy panel, e.g. 220x500:
-        self._base_ui_scale = Vec2((220 / h) * 2, (500 / h) * 2)
-        self.scale = self._base_ui_scale
-        # ----------------------------------
-
-    def update(self):
-        # --- Dynamic scaling for hierarchy list ---
-        cur_w, _ = window.size
-        ratio = cur_w / (self._init_w or cur_w)
-        self.scale = self._base_ui_scale * ratio
-        # ------------------------------------------
-        # Scale the background and text to match the panel's scaling
-        self.bg.scale = Vec2(0.15, 10) * ratio  # Adjust 0.15, 10 as needed for your design
-        self.entity_list_text.scale = 0.7 * ratio  # Adjust 0.6 as needed for your design
-        # Dynamically scale the selected_renderer highlight
-        self.selected_renderer.scale = Vec2(0.15, Text.size) * ratio  # Adjust 0.25, Text.size as needed
-
     def input(self, key):
         """
         Handles user input for selecting entities using mouse clicks.
-        
+
         Args:
             key (str): The input key (e.g., 'left mouse down', 'left mouse up').
         """
@@ -3072,7 +2945,7 @@ class HierarchyList(Entity):
         if key == 'left mouse down' and self.bg.hovered:
             try:
                 y = int(-mouse.point.y * self.bg.scale_y / Text.size / self.entity_list_text.scale_y)
-                
+
                 # Check if y is within bounds
                 if y < len(LEVEL_EDITOR.entities):  # type: ignore
                     # Handle selection based on control or shift key
@@ -3089,7 +2962,7 @@ class HierarchyList(Entity):
             except IndexError as e:
                 # Error handling in case of an invalid index (e.g., out of bounds)
                 print(f"Error in input selection: {e}")
-            
+
             # Deselect all if neither control nor shift is held
             if not held_keys['control'] and not held_keys['shift']:
                 LEVEL_EDITOR.selection.clear()  # type: ignore
@@ -3104,9 +2977,9 @@ class HierarchyList(Entity):
 
     def draw(self, entity, indent=0):
         """
-        Draws the entity's name in the hierarchy list, with the appropriate indentation 
+        Draws the entity's name in the hierarchy list, with the appropriate indentation
         and selection highlighting.
-        
+
         Args:
             entity (Entity): The entity to draw in the hierarchy.
             indent (int): The indentation level for the entity in the hierarchy.
@@ -3114,7 +2987,7 @@ class HierarchyList(Entity):
         # Check if entity exists in the level editor entities list
         if entity not in LEVEL_EDITOR.entities:  # type: ignore
             return
-        
+
         try:
             # Update entity index for drawing
             self.entity_indices[self.i] = LEVEL_EDITOR.entities.index(entity)  # type: ignore
@@ -3134,7 +3007,7 @@ class HierarchyList(Entity):
 
     def render_selection(self):
         """
-        Renders the selected entities in the hierarchy, updating the text and renderer 
+        Renders the selected entities in the hierarchy, updating the text and renderer
         for each entity.
         """
         self._text = ''
@@ -3143,7 +3016,7 @@ class HierarchyList(Entity):
 
         self.i = 0
         current_node = None
-        
+
         # Early return if no valid scene exists
         if LEVEL_EDITOR.current_scene is None or LEVEL_EDITOR.current_scene.scene_parent is None:  # type: ignore
             return
@@ -3168,14 +3041,14 @@ class InspectorInputField(InputField):
     A class representing an input field for an inspector in a UI, extending the base
     InputField class. This class customizes the position, scale, and color of the text field
     to better suit the inspector's UI layout.
-    
+
     Attributes:
         highlight_color (Color): The color used for highlighting the input field.
     """
-    
+
     def __init__(self, **kwargs):
         """
-        Initializes the InspectorInputField object, configuring its position, 
+        Initializes the InspectorInputField object, configuring its position,
         scale, color, and highlight color based on custom settings.
 
         Args:
@@ -3188,13 +3061,13 @@ class InspectorInputField(InputField):
             # Customize the position of the text field relative to its parent container
             self.text_field.x = 0.05
             self.text_field.y = -0.25
-            
+
             # Set the world scale of the text field, adjusting it based on a factor (e.g., 0.75)
             self.text_field.world_scale = 25 * 0.75
-            
+
             # Change the text color to a lighter gray for the text entity in the field
             self.text_field.text_entity.color = color.light_gray
-            
+
             # Set the highlight color to a specific shade of blue (for focus/interaction)
             self.highlight_color = color._32
 
@@ -3208,28 +3081,28 @@ class InspectorInputField(InputField):
 
 class InspectorButton(Button):
     """
-    A class representing a customized button for the inspector in a UI, extending the base 
+    A class representing a customized button for the inspector in a UI, extending the base
     Button class. This class allows further customization of the button's default appearance,
     text, and behavior for use in the inspector's UI.
 
     Attributes:
         defaults (dict): A dictionary containing the default properties for the button.
     """
-    
+
     # Default properties for the button such as model, color, and text appearance.
     defaults = dict(
-        model='quad', 
-        origin=(-0.5, 0.5), 
-        text='?', 
-        text_origin=(-0.5, 0), 
-        text_color=color.light_gray, 
-        color=color.black90, 
+        model='quad',
+        origin=(-0.5, 0.5),
+        text='?',
+        text_origin=(-0.5, 0),
+        text_color=color.light_gray,
+        color=color.black90,
         highlight_color=color._32
     )
 
     def __init__(self, **kwargs):
         """
-        Initializes the InspectorButton object, customizing its appearance and 
+        Initializes the InspectorButton object, customizing its appearance and
         text properties based on the provided keyword arguments.
 
         Args:
@@ -3239,7 +3112,7 @@ class InspectorButton(Button):
             # Merge default properties with any provided arguments to initialize the button
             kwargs = __class__.defaults | kwargs
             super().__init__(**kwargs)
-            
+
             # Customize the position of the text entity inside the button
             self.text_entity.x = 0.025
 
@@ -3266,10 +3139,10 @@ class ColorField(InspectorButton):
         preview (Entity): The entity representing the preview box where the selected color is displayed.
         value (Color): The current color value displayed in the preview box.
     """
-    
+
     def __init__(self, attr_name='color', is_shader_input=False, value=color.white, **kwargs):
         """
-        Initializes the ColorField object, setting the default attributes and creating a preview 
+        Initializes the ColorField object, setting the default attributes and creating a preview
         entity for the color display.
 
         Args:
@@ -3303,7 +3176,7 @@ class ColorField(InspectorButton):
     def value(self):
         """
         Property getter for the color value of the preview entity.
-        
+
         Returns:
             Color: The current color of the preview entity.
         """
@@ -3313,7 +3186,7 @@ class ColorField(InspectorButton):
     def value(self, value):
         """
         Property setter for the color value of the preview entity.
-        
+
         Args:
             value (Color): The new color to set for the preview entity.
         """
@@ -3321,10 +3194,10 @@ class ColorField(InspectorButton):
 
     def on_click(self):
         """
-        Event handler for when the color field is clicked. It opens the color menu 
+        Event handler for when the color field is clicked. It opens the color menu
         and positions it near the clicked color field.
 
-        This method updates the color menu state and assigns the current color field 
+        This method updates the color menu state and assigns the current color field
         to the color menu for further interactions.
         """
         try:
@@ -3333,7 +3206,7 @@ class ColorField(InspectorButton):
 
             # Position the color menu relative to the current position of the color field
             LEVEL_EDITOR.color_menu.position = (  # type: ignore
-                self.preview.get_position(relative_to=camera.ui).xy + Vec2(0.025, -0.01)  # type: ignore
+                    self.preview.get_position(relative_to=camera.ui).xy + Vec2(0.025, -0.01)  # type: ignore
             )
 
             # Change the state of the menu handler to 'color_menu' to show the color selection menu
@@ -3377,15 +3250,6 @@ class Inspector(Entity):
         # Call base class constructor, attaching this inspector to the level editor's hierarchy UI.
         try:
             super().__init__(parent=LEVEL_EDITOR.hierarchy_list, x=.15)  # type: ignore
-
-            # --- Dynamic scaling attributes ---
-            self._init_w, self._init_h = window.size
-            h = self._init_h or 1
-            # Set your desired pixel size for the inspector panel, e.g. 300x500:
-            self._base_ui_scale = Vec2((300 / h) * 2, (500 / h) * 2)
-            self.scale = self._base_ui_scale
-            # ----------------------------------
-
         except Exception as e:
             # If the parent doesn't exist or LEVEL_EDITOR is not set up, fail silently.
             # We do not alter logic; we simply ensure the inspector can still be constructed without crashing.
@@ -3414,9 +3278,9 @@ class Inspector(Entity):
 
         # Create 3x3 grid of input fields for x,y,z, rotation_x, rotation_y, rotation_z, scale_x, scale_y, scale_z
         for y, names in enumerate((
-            ('x', 'y', 'z'),
-            ('rotation_x', 'rotation_y', 'rotation_z'),
-            ('scale_x', 'scale_y', 'scale_z')
+                ('x', 'y', 'z'),
+                ('rotation_x', 'rotation_y', 'rotation_z'),
+                ('scale_x', 'scale_y', 'scale_z')
         )):
             for x in range(3):
                 # Default value is '0' for position and rotation, '1' for scale
@@ -3613,9 +3477,9 @@ class Inspector(Entity):
 
         # Update transform fields (x, y, z, rotation_x, rotation_y, rotation_z, scale_x, scale_y, scale_z)
         for i, attr_name in enumerate((
-            'x', 'y', 'z',
-            'rotation_x', 'rotation_y', 'rotation_z',
-            'scale_x', 'scale_y', 'scale_z'
+                'x', 'y', 'z',
+                'rotation_x', 'rotation_y', 'rotation_z',
+                'scale_x', 'scale_y', 'scale_z'
         )):
             try:
                 # Get the value from the selected entity, round to 4 decimal places, convert to string
@@ -3755,24 +3619,6 @@ class Inspector(Entity):
                     b.on_click = Func(setattr, LEVEL_EDITOR.menu_handler, 'state', 'class_menu')  # type: ignore
 
                 i += 1
-
-        def update(self):
-            cur_w, _ = window.size
-            ratio = cur_w / (self._init_w or cur_w)
-            self.scale = self._base_ui_scale * ratio
-        
-            # Optionally scale the name field and its children
-            self.name_field.scale = Vec2(.5, .04) * ratio  # adjust as needed
-            for field in self.transform_fields:
-                field.scale = Vec2(.2, .04) * ratio  # adjust as needed
-        
-            # Optionally scale property fields (model, texture, color, etc.)
-            for field in self.fields.values():
-                field.scale = Vec2(.5, .04) * ratio  # adjust as needed
-        
-            # Optionally scale shader input fields
-            for child in self.shader_inputs_parent.children:
-                child.scale = Vec2(.5, .04) * ratio  # adjust as needed
 
 
 class MenuHandler(Entity):
@@ -3981,7 +3827,7 @@ class AssetMenu(ButtonList):
 class ModelMenu(AssetMenu):
     """
     ModelMenu is a specialized AssetMenu for selecting and assigning 3D models to entities in the level editor.
-    
+
     When enabled, it gathers available model assets (including built-in placeholders and any files with extensions
     .bam, .obj, or .ursinamesh in the application.asset_folder) and populates the asset_names list accordingly.
     Upon selection of a model, it records the change (old vs. new model name) for each selected entity in LEVEL_EDITOR.selection,
@@ -4080,7 +3926,7 @@ class TextureMenu(AssetMenu):
     TextureMenu is a specialized AssetMenu for selecting and assigning textures (or other shader inputs) to entities in the level editor.
 
     Attributes:
-        target_attr (str): The attribute name that the selected texture will be applied to. Defaults to 'texture', 
+        target_attr (str): The attribute name that the selected texture will be applied to. Defaults to 'texture',
                            but can be changed (e.g., to a shader uniform name) before the menu is enabled.
         asset_names (list): A list of texture asset names to populate the menu. Populated in on_enable().
     """
@@ -4091,7 +3937,7 @@ class TextureMenu(AssetMenu):
 
         - Calls the parent AssetMenu __init__ with any provided keyword arguments.
         - Initializes target_attr to 'texture', indicating that by default, clicking an asset sets the 'texture' attribute.
-        
+
         Error handling:
         - No specific error handling needed here; relies on AssetMenu to set up the UI.
         """
@@ -4327,7 +4173,7 @@ class ColorMenu(Entity):
         - Positions the sliders vertically and sets their knob colors.
         - Adds an invisible full-screen quad behind the sliders to capture clicks and close the menu (`self.bg` overlay).
         - Introduces an `apply_color` flag to control whether slider movements immediately update entity colors.
-        
+
         Error handling:
         - Wraps potentially unsafe operations (e.g., accessing `self.s_slider.bg.model.vertices`) in try-except blocks
           to avoid crashes if the underlying model or its vertices list is missing.
@@ -4550,7 +4396,7 @@ class ColorMenu(Entity):
 
         - Sets the menu handler's state to 'None' to hide this menu.
         - Records an undo entry for each selected entity as (entity_index, 'color', old_color, new_color).
-        
+
         Error handling:
         - Wraps state change and undo recording in try-except blocks to log errors without crashing.
         """
@@ -4668,7 +4514,7 @@ class ClassMenu(AssetMenu):
         - Calls the parent AssetMenu __init__ to set up base popup behavior.
         - Initializes `available_classes` as a dictionary mapping display names (strings) to actual class references
           or None. By default, only 'None' is available, meaning no class will be spawned.
-        
+
         Error handling:
         - None required here, as logic is straightforward. Any missing parent functionality will raise normally.
         """
@@ -5078,6 +4924,7 @@ class Duplicator(Entity):
 
             try:
                 # Direct mouse raycasts to the plane so we can pick a point on it
+                # Direct mouse raycasts to the plane so we can pick a point on it
                 mouse.traverse_target = self.plane
                 mouse.update()
                 self.start_position = mouse.world_point
@@ -5339,19 +5186,6 @@ class RightClickMenu(Entity):
                 enabled=False,  # Start hidden; enabled on right-click
                 scale=.05
             )
-
-            # After creating self.radial_menu
-            self.radial_menu._init_w, self.radial_menu._init_h = window.size
-            h = self.radial_menu._init_h or 1
-            self.radial_menu._base_ui_scale = (20 / h) * 2  # 80px diameter, adjust as needed
-            self.radial_menu.scale = self.radial_menu._base_ui_scale
-            
-            # Optionally, scale each button if you want them to scale individually:
-            for button in self.radial_menu.buttons:
-                button._init_w, button._init_h = window.size
-                button._base_ui_scale = (240 / h) * 2  # 24px diameter, adjust as needed
-                button.scale = button._base_ui_scale
-
         except Exception as e:
             print(f"[RightClickMenu] Error creating RadialMenu: {e}")
             self.radial_menu = None
@@ -5439,13 +5273,6 @@ class Search(Entity):
         try:
             # Create the input field, but keep it disabled until space is pressed
             self.input_field = InputField(parent=LEVEL_EDITOR.ui, enabled=False)  # type: ignore
-
-            # After creating self.input_field
-            self.input_field._init_w, self.input_field._init_h = window.size
-            h = self.input_field._init_h or 1
-            self.input_field._base_ui_scale = (20 / h) * 2  # 20px height, adjust as needed
-            self.input_field.scale = self.input_field._base_ui_scale
-
         except Exception as e:
             print(f"[Search] Error creating InputField: {e}")
             self.input_field = None
@@ -5504,11 +5331,11 @@ def get_major_axis_relative_to_view(entity):
 
     Returns:
         tuple:
-            - axis_index (int): 
+            - axis_index (int):
                 0 if the entity's right axis is the primary axis relative to the view (i.e., left/right),
                 1 if the up axis is primary (i.e., top/bottom),
                 2 if the forward axis is primary (i.e., front/back).
-            - is_positive_direction (bool): 
+            - is_positive_direction (bool):
                 True if the dot product along the chosen axis is positive (the axis points toward the camera back vector),
                 False if negative (it points away).
 
