@@ -1,0 +1,40 @@
+ - 04/06/2025 (AEST)
+1) Added then removed:
+
+        # TODO Temporary fix to Gizmo size issue
+        self.subgizmos['xz'].scale = 0.6
+        self.subgizmos['xz'].scale_y = 0.05
+        self.subgizmos['x'].scale = 1
+        self.subgizmos['y'].scale = 1
+        self.subgizmos['z'].scale = 1
+
+In the Gizmo Class, Update Function so when its sizes change it will be reverted.
+hopefully this is just a temporary solution.
+
+
+2) Added:
+
+        self.subgizmos['xz'].original_scale = self.subgizmos['xz'].scale
+        self.subgizmos['x'].original_scale = self.subgizmos['x'].scale
+        self.subgizmos['y'].original_scale = self.subgizmos['y'].scale
+        self.subgizmos['z'].original_scale = self.subgizmos['z'].scale
+
+In the Gizmo Class, under the (# Set highlight and original scale for visual feedback)
+section to define original_scale for each part of the Gizmo. I havn't figured out how to
+implement it yet because current implementation doesn't work, I think
+because it is executed before their size changes.
+
+
+3: Added:
+
+        # TODO Temporary fix to Gizmo size issue
+        self.subgizmos['xz'].scale = self.subgizmos['xz'].original_scale # 1
+        self.subgizmos['xz'].scale_y = 0.05
+        self.subgizmos['x'].scale = self.subgizmos['x'].original_scale # 1
+        self.subgizmos['y'].scale = self.subgizmos['y'].original_scale # 1
+        self.subgizmos['z'].scale = self.subgizmos['z'].original_scale # 1
+
+In the Gizmo Class, Update Function so when its sizes change it will be reverted.
+hopefully this is just a temporary solution. Upgraded solution of change 1, using change 2 features.
+
+4: Edited file names and fixed / added stuff into README.md
