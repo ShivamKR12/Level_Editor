@@ -1049,6 +1049,14 @@ class Gizmo(Entity):
         Update the gizmo's state each frame.
         Handles gizmo scaling relative to camera, and position syncing when dragging.
         """
+
+        # TODO Temporary (hopefully) fix to Gizmo size issue
+        self.subgizmos['xz'].scale = self.subgizmos['xz'].original_scale # 1
+        self.subgizmos['xz'].scale_y = 0.05
+        self.subgizmos['x'].scale = self.subgizmos['x'].original_scale # 1
+        self.subgizmos['y'].scale = self.subgizmos['y'].original_scale # 1
+        self.subgizmos['z'].scale = self.subgizmos['z'].original_scale # 1
+
         if held_keys['r'] or held_keys['s']:
             return  # skip updating during rotation/scale modes
 
