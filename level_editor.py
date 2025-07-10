@@ -971,6 +971,11 @@ class Gizmo(Entity):
             arrow.highlight_color = color.white
             arrow.original_scale = arrow.scale
 
+            self.subgizmos['xz'].original_scale = self.subgizmos['xz'].scale
+            self.subgizmos['x'].original_scale = self.subgizmos['x'].scale
+            self.subgizmos['y'].original_scale = self.subgizmos['y'].scale
+            self.subgizmos['z'].original_scale = self.subgizmos['z'].scale
+
         # Fake gizmo: used for local transform locking without visual clutter
         self.fake_gizmo = Entity(parent=LEVEL_EDITOR, enabled=False)  # type: ignore
         self.fake_gizmo.subgizmos = {}
@@ -1058,6 +1063,13 @@ class Gizmo(Entity):
 
         if self.subgizmos['xz'].dragging:
             self.fake_gizmo.world_position = self.subgizmos['xz'].world_position
+
+        # TODO Temporary fix to Gizmo size issue
+        self.subgizmos['xz'].scale = self.subgizmos['xz'].original_scale # 1
+        self.subgizmos['xz'].scale_y = 0.05
+        self.subgizmos['x'].scale = self.subgizmos['x'].original_scale # 1
+        self.subgizmos['y'].scale = self.subgizmos['y'].original_scale # 1
+        self.subgizmos['z'].scale = self.subgizmos['z'].original_scale # 1
 
 
 class RotationGizmo(Entity):
